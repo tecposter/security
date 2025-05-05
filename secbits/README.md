@@ -33,6 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         edit.as_slice()[..3].copy_from_slice(b"NEW");
     } // drop edit
 
+    println!("{:?}", std::str::from_utf8(secret.read()?.as_slice()));
     assert_eq!(secret.read()?.as_slice(), b"NEWsecretextra data");
 
     Ok(())
