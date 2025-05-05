@@ -16,19 +16,25 @@ use secbits::SecBytes;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create secure storage
-    let mut secret = SecBytes::new()?;
-    
+    let mut secret = SecBytes::new("my_secret".as_bytes().to_vec())?;
+
     // Store sensitive data (source gets zeroed)
-    secret.append(&mut "my_secret".as_bytes().to_vec())?;
+    secret.append(b"extra data".to_vec())?;
 
     // Read access
-    let view = secret.read()?;
-    assert_eq!(view.as_slice(), b"my_secret");
+    {
+        let view = secret.read()?;
+        assert_eq!(view.as_slice(), b"my_secretextra data");
+    } // drop view
 
     // Write access (exclusive)
-    let mut edit = secret.write()?;
-    edit.as_slice()[..3].copy_from_slice(b"NEW");
-    
+    {
+        let mut edit = secret.write()?;
+        edit.as_slice()[..3].copy_from_slice(b"NEW");
+    } // drop edit
+
+    assert_eq!(secret.read()?.as_slice(), b"NEWsecretextra data");
+
     Ok(())
 } // Memory automatically unlocked and zeroed here
 ```

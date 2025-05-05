@@ -103,7 +103,6 @@ impl<'a> SecReadBytes<'a> {
 impl Drop for SecReadBytes<'_> {
     fn drop(&mut self) {
         let prev = self.0.reader_count.fetch_sub(1, Ordering::AcqRel);
-        println!("SecReadBytes::drop: {prev}");
 
         if prev == 1 {
             if let Err(e) = self.0.mem.set_noaccess() {
