@@ -5,7 +5,7 @@ edition = "2024"
 authors = ["Your Name <zhanjh@126.com>"]
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/tecposter/security/tree/master/secbits"
+repository = "https://github.com/tecposter/security/tree/main/secbits"
 keywords = ["Security", "Memory"]
 description = "A library for secure memory handling featuring"
 
