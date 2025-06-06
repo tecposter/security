@@ -19,6 +19,11 @@ impl SecBytes {
         })
     }
 
+    /// Returns the length of the contained data
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
     /// Appends data to the buffer, securely erasing the source.
     /// Takes ownership of the input slice by zeroing it.
     pub fn append(&mut self, mut input: impl AsMut<[u8]>) -> Result<(), std::io::Error> {
