@@ -26,9 +26,19 @@ impl SecBytes {
 
     /// Appends data to the buffer, securely erasing the source.
     /// Takes ownership of the input slice by zeroing it.
-    pub fn append(&mut self, mut input: impl AsMut<[u8]>) -> Result<(), std::io::Error> {
+    pub fn append(&mut self, input: impl AsMut<[u8]>) -> Result<(), std::io::Error> {
+        self.write(self.len(), input)
+    }
+
+    /// Writes data to the buffer by offset, securely erasing the source.
+    /// Takes ownership of the input slice by zeroing it.
+    pub fn write(
+        &mut self,
+        offset: usize,
+        mut input: impl AsMut<[u8]>,
+    ) -> Result<(), std::io::Error> {
         let data = input.as_mut();
-        let required_cap = self.len.checked_add(data.len()).ok_or_else(|| {
+        let required_cap = offset.checked_add(data.len()).ok_or_else(|| {
             std::io::Error::new(std::io::ErrorKind::InvalidInput, "Size overflow")
         })?;
 
@@ -40,10 +50,10 @@ impl SecBytes {
         unsafe {
             std::ptr::copy_nonoverlapping(
                 data.as_ptr(),
-                self.mem.as_mut_ptr().add(self.len),
+                self.mem.as_mut_ptr().add(offset),
                 data.len(),
             );
-            self.len += data.len();
+            self.len = (offset + data.len()).max(self.len);
         }
 
         // Securely erase source data
@@ -79,12 +89,12 @@ impl SecBytes {
     }
 
     /// Returns slice view of the contained data
-    pub fn read(&self) -> Result<SecReadBytes, std::io::Error> {
+    pub fn view(&self) -> Result<SecReadBytes, std::io::Error> {
         SecReadBytes::build(self)
     }
 
     /// Returns mutable slice view of the contained data
-    pub fn write(&mut self) -> Result<SecWriteBytes, std::io::Error> {
+    pub fn edit(&mut self) -> Result<SecWriteBytes, std::io::Error> {
         SecWriteBytes::build(self)
     }
 }

@@ -47,18 +47,18 @@ mod tests {
         let mut sbs = SecBytes::new(&mut d0).unwrap();
         assert_eq!(&d0, &[0; 10]);
 
-        assert_eq!(sbs.read().unwrap().as_slice(), ori0);
+        assert_eq!(sbs.view().unwrap().as_slice(), ori0);
 
         let ori1 = b"abcdefg";
         let mut d1: Vec<u8> = ori1.into();
         sbs.append(&mut d1[0..3]).unwrap();
         let expected = [ori0, &ori1[..3]].concat();
-        assert_eq!(sbs.read().unwrap().as_slice(), &expected);
+        assert_eq!(sbs.view().unwrap().as_slice(), &expected);
         assert_eq!(&d1[..3], &[0; 3]);
         assert_eq!(&d1[3..], b"defg");
 
-        sbs.write().unwrap().as_slice()[..3].copy_from_slice(b"xyz");
+        sbs.edit().unwrap().as_slice()[..3].copy_from_slice(b"xyz");
         let expected = [b"xyz", &ori0[3..], &ori1[..3]].concat();
-        assert_eq!(sbs.read().unwrap().as_slice(), &expected);
+        assert_eq!(sbs.view().unwrap().as_slice(), &expected);
     }
 }
