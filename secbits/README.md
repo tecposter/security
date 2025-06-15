@@ -1,13 +1,34 @@
 # SecBits
 
-A Rust library for secure memory handling featuring:  
-- 🔒 Memory locking (mlock/madvise)  
-- 🛡️ Configurable protection modes (RW/RO/NOACCESS)  
-- 🧼 Secure zeroing with platform-specific intrinsics  
-- 🗑️ Automatic memory wiping on drop  
-- 📏 Page-aligned allocations  
+A Rust library for secure memory handling with enhanced protection against common vulnerabilities and memory inspection attacks.
+
+## Features
+- 🔒 Secure memory allocation with page alignment
+- 🧹 Automatic secure zeroing before deallocation
+- 🔐 Memory locking to prevent swapping to disk
+- 🛡️ Fork protection (Linux) to wipe memory on fork
+- 🚫 Core dump exclusion to prevent sensitive data leaks
+- 🔑 Fine-grained access control with read/write guards
+
+## Security Properties
+
+- Confidentiality: Memory is locked and wiped on release
+- Integrity: Write access is controlled via guards
+- Availability: Prevents accidental exposure via core dumps
+- Least Privilege: Memory starts as no-access, transitions only when needed
+
 
 **Use Case**: Sensitive data handling (cryptographic keys, passwords, PII)
+
+## Installation
+
+Add to Cargo.toml:
+
+```toml
+[dependencies]
+secbits = "0.3.0"
+```
+
 
 ## Quick Start
 
@@ -16,25 +37,25 @@ use secbits::SecBytes;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create secure storage
-    let mut secret = SecBytes::new("my_secret".as_bytes().to_vec())?;
+    let mut secret = SecBytes::from_bytes("my_secret".as_bytes().to_vec())?;
 
     // Store sensitive data (source gets zeroed)
-    secret.append(b"extra data".to_vec())?;
+    secret.edit()?.append(b"extra data".to_vec())?;
 
     // Read access
     {
-        let view = secret.read()?;
+        let view = secret.view()?;
         assert_eq!(view.as_slice(), b"my_secretextra data");
     } // drop view
 
     // Write access (exclusive)
     {
-        let mut edit = secret.write()?;
+        let mut edit = secret.edit()?;
         edit.as_slice()[..3].copy_from_slice(b"NEW");
     } // drop edit
 
-    println!("{:?}", std::str::from_utf8(secret.read()?.as_slice()));
-    assert_eq!(secret.read()?.as_slice(), b"NEWsecretextra data");
+    println!("{:?}", std::str::from_utf8(secret.view()?.as_slice()));
+    assert_eq!(secret.view()?.as_slice(), b"NEWsecretextra data");
 
     Ok(())
 } // Memory automatically unlocked and zeroed here
@@ -42,22 +63,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Major Components
 
-### 1. SecMem Core
+### 1. SecSpace Core
 
 ```rust
-struct SecMem {
-    ptr: NonNull<u8>,
-    cap: usize,      
-    layout: Layout,  
+pub struct SecSpace {
+    ptr: NonNull<u8>, // Non-null pointer to memory region
+    cap: usize,       // Capacity in bytes (always page-aligned)
+    pkey: Option<i32>,
 }
 ```
 
 Key Features:
 
 - 📐 Page-Aligned Allocations: Always uses system page size multiples
-- 🔐 Memory Locking:
-    - `mlock()` prevents swapping to disk
-    - `madvise(MADV_DONTDUMP)` excludes from core dumps
 - 🛡️ Protection Modes:
     - `ProtectionMode::None` - No access (default)
     - `ProtectionMode::Read` - Read-only
@@ -71,9 +89,9 @@ Key Features:
 ### 2. SecBytes Buffer
 
 ```rust
-struct SecBytes {
-    mem: SecMem,         
-    len: usize,          
+pub struct SecBytes {
+    mem: SecSpace,
+    len: usize,
     reader_count: AtomicUsize,
 }
 ```
@@ -105,7 +123,7 @@ Key Features:
 
 ```rust
 // Source data gets zeroed automatically
-secret.append(&mut sensitive_data)?;
+secret.edit()?.append(&mut sensitive_data)?;
 ```
 
 ## 🔒 Security Considerations
@@ -114,7 +132,7 @@ Guarantees
 
 - 🛡️ Memory never swapped to disk (mlock)
 - 🚫 Sensitive data excluded from core dumps
-- 🕵️♂️ Defeats heap inspection attacks
+- 🕵️ Defeats heap inspection attacks
 - 🧠 Prevents compiler optimizations from skipping zeroing
 
 Limitations
