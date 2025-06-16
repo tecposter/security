@@ -152,8 +152,14 @@ impl Drop for SecSpace {
             .set_readwrite()
             .and_then(|_| {
                 zero_out(self.ptr, self.cap);
-                keep_on_fork(self.ptr, self.cap)
+
+                if let Some(pkey) = self.pkey {
+                    mpk_free(pkey)
+                } else {
+                    Ok(())
+                }
             })
+            .and_then(|_| keep_on_fork(self.ptr, self.cap))
             .and_then(|_| do_dump_core(self.ptr, self.cap))
             .and_then(|_| unlock_memory(self.ptr, self.cap))
             .and_then(|_| sec_free(self.ptr, self.cap))
