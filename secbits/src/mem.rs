@@ -171,6 +171,9 @@ impl Drop for SecSpace {
     }
 }
 
+unsafe impl Send for SecSpace {}
+unsafe impl Sync for SecSpace {}
+
 pub fn calc_page_aligned_size(required_size: usize) -> std::io::Result<usize> {
     let pagesize = *PAGESIZE;
 
